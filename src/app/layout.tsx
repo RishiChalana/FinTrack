@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from '@/components/ui/toaster';
+import { LanguageSelector } from '@/components/language-selector';
+import { CookieBanner } from '@/components/cookie-banner';
 
 export const metadata: Metadata = {
   title: 'FinTrack AI',
@@ -30,7 +32,9 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
+          <div className="p-2 flex justify-end"><LanguageSelector /></div>
           {children}
+          <CookieBanner />
           <Toaster />
         </ThemeProvider>
       </body>

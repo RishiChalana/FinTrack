@@ -28,7 +28,6 @@ import { Separator } from "@/components/ui/separator";
 const navItems = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/transactions", icon: ArrowRightLeft, label: "Transactions" },
-  { href: "/accounts", icon: Wallet, label: "Accounts" },
   { href: "/budgets", icon: PiggyBank, label: "Budgets" },
   { href: "/reports", icon: BarChart, label: "Reports" },
   { href: "/goals", icon: Goal, label: "Goals" },

@@ -31,7 +31,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { accounts, transactions } from "@/lib/data";
+import { transactions } from "@/lib/data";
+import { apiGet, apiPost } from "@/lib/api-client";
 
 const formSchema = z.object({
   description: z.string().min(2, {
@@ -42,8 +43,7 @@ const formSchema = z.object({
   }),
   type: z.enum(["Income", "Expense"]),
   date: z.date(),
-  category: z.string().min(1, { message: "Please select a category." }),
-  accountName: z.string().min(1, { message: "Please select an account." }),
+  paymentType: z.enum(["upi", "cash", "card", "other"], { required_error: "Please select a payment type." }),
 });
 
 export function AddTransactionForm({ setOpen }: { setOpen: (open: boolean) => void }) {
@@ -55,35 +55,49 @@ export function AddTransactionForm({ setOpen }: { setOpen: (open: boolean) => vo
       amount: 0,
       type: "Expense",
       date: new Date(),
-      category: "",
-      accountName: "",
+      paymentType: "other",
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    // This is where you would typically handle the form submission,
-    // e.g., by sending the data to your backend.
-    
-    // For now, we'll just add it to our mock data.
-    const newTransaction = {
-      id: (transactions.length + 1).toString(),
-      ...values,
-      amount: values.type === 'Income' ? values.amount : -values.amount,
-      date: values.date.toISOString(),
-    };
-    transactions.unshift(newTransaction);
-    
-    toast({
-      title: "Transaction Added",
-      description: `${values.description} has been added to your transactions.`,
-    });
-    setOpen(false); // Close the dialog on successful submission
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    try {
+      // Ensure an account exists (use first or create a default CASH INR wallet)
+      let accountsResp = await apiGet<{ accounts: any[] }>("/api/accounts").catch(() => ({ accounts: [] }));
+      let accountId = accountsResp.accounts?.[0]?.id as string | undefined;
+      if (!accountId) {
+        const created = await apiPost<{ account: any }>("/api/accounts", {
+          name: "Wallet",
+          type: "CASH",
+          currency: "INR",
+          startingBalance: "0.00",
+        });
+        accountId = created.account.id;
+      }
+
+      const payload = {
+        accountId,
+        type: values.type.toUpperCase(),
+        amount: String(values.amount),
+        currency: "INR",
+        method: values.paymentType,
+        notes: values.description,
+        date: values.date.toISOString(),
+      };
+      await apiPost("/api/transactions", payload);
+
+      toast({ title: "Transaction Added", description: `${values.description} saved.` });
+      setOpen(false);
+    } catch (e) {
+      toast({ title: "Failed to add", description: "Please try again.", variant: "destructive" });
+    }
   }
 
-  const transactionCategories = Array.from(new Set(transactions.map(t => t.category)));
-  if (!transactionCategories.includes('Other')) {
-    transactionCategories.push('Other');
-  }
+  const paymentTypes = [
+    { value: "upi", label: "UPI" },
+    { value: "cash", label: "Cash" },
+    { value: "card", label: "Card" },
+    { value: "other", label: "Other" },
+  ];
 
 
   return (
@@ -188,38 +202,20 @@ export function AddTransactionForm({ setOpen }: { setOpen: (open: boolean) => vo
         />
         <FormField
           control={form.control}
-          name="category"
+          name="paymentType"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Category</FormLabel>
+              <FormLabel>Payment Type</FormLabel>
               <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a category" />
+                    <SelectValue placeholder="Select payment type" />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {transactionCategories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="accountName"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Account</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select an account" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {accounts.map(acc => <SelectItem key={acc.id} value={acc.name}>{acc.name}</SelectItem>)}
+                  {paymentTypes.map((pt) => (
+                    <SelectItem key={pt.value} value={pt.value}>{pt.label}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <FormMessage />

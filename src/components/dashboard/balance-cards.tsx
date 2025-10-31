@@ -1,10 +1,29 @@
+"use client";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DollarSign, CreditCard, Landmark } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { apiGet } from "@/lib/api-client";
 
 export function BalanceCards() {
-  const totalBalance = 9606.05;
-  const totalIncome = 5000;
-  const totalExpenses = 393.95;
+  const [transactions, setTransactions] = useState<any[]>([]);
+  useEffect(() => {
+    let mounted = true;
+    apiGet<{ transactions: any[] }>("/api/transactions")
+      .then((d) => { if (mounted) setTransactions(d.transactions ?? []); })
+      .catch(() => setTransactions([]));
+    return () => { mounted = false; };
+  }, []);
+
+  const totalIncome = useMemo(() =>
+    transactions.filter(t => t.type === 'INCOME').reduce((s, t) => s + Number(t.amount), 0),
+    [transactions]
+  );
+  const totalExpenses = useMemo(() =>
+    transactions.filter(t => t.type === 'EXPENSE').reduce((s, t) => s + Math.abs(Number(t.amount)), 0),
+    [transactions]
+  );
+  const totalBalance = useMemo(() => totalIncome - totalExpenses, [totalIncome, totalExpenses]);
 
   return (
     <div className="grid gap-4 md:grid-cols-3">

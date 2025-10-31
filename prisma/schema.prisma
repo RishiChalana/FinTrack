@@ -1,0 +1,150 @@
+// Datasource and generator
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// Core models
+model User {
+  id             String    @id @default(cuid())
+  email          String    @unique
+  passwordHash   String
+  name           String?
+  role           Role      @default(USER)
+  twoFactorSecret String?  // optional 2FA secret
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  accounts       Account[]
+  transactions   Transaction[]
+  budgets        Budget[]
+  goals          Goal[]
+  categories     Category[]
+  notifications  Notification[]
+}
+
+model Account {
+  id           String        @id @default(cuid())
+  userId       String
+  user         User          @relation(fields: [userId], references: [id])
+  name         String
+  type         AccountType
+  currency     String        // ISO currency code
+  startingBalance Decimal    @db.Decimal(18, 2)
+  color        String?
+  icon         String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  transactions Transaction[]
+  // Opposite side of the Transaction.transferTo relation
+  transferToTransactions Transaction[] @relation("TransferTo")
+}
+
+model Category {
+  id        String        @id @default(cuid())
+  userId    String
+  user      User          @relation(fields: [userId], references: [id])
+  name      String
+  type      CategoryType  // INCOME or EXPENSE
+  color     String?
+  icon      String?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  budgets   Budget[]
+  txns      Transaction[]
+}
+
+model Transaction {
+  id           String      @id @default(cuid())
+  userId       String
+  user         User        @relation(fields: [userId], references: [id])
+  accountId    String
+  account      Account     @relation(fields: [accountId], references: [id])
+  type         TransactionType
+  amount       Decimal     @db.Decimal(18, 2)
+  currency     String
+  categoryId   String?
+  category     Category?   @relation(fields: [categoryId], references: [id])
+  transferToId String?
+  transferTo   Account?    @relation("TransferTo", fields: [transferToId], references: [id])
+  method       String?
+  notes        String?
+  receiptUrl   String?
+  date         DateTime
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+}
+
+model Budget {
+  id          String      @id @default(cuid())
+  userId      String
+  user        User        @relation(fields: [userId], references: [id])
+  name        String
+  categoryId  String?
+  category    Category?   @relation(fields: [categoryId], references: [id])
+  amount      Decimal     @db.Decimal(18, 2)
+  period      BudgetPeriod
+  currency    String
+  startDate   DateTime?
+  endDate     DateTime?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+model Goal {
+  id          String     @id @default(cuid())
+  userId      String
+  user        User       @relation(fields: [userId], references: [id])
+  name        String
+  targetAmount Decimal    @db.Decimal(18, 2)
+  currentAmount Decimal   @db.Decimal(18, 2) @default(0)
+  currency    String
+  targetDate  DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  type      String
+  message   String
+  read      Boolean   @default(false)
+  createdAt DateTime  @default(now())
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum AccountType {
+  CASH
+  BANK
+  CREDIT_CARD
+  INVESTMENT
+  OTHER
+}
+
+enum CategoryType {
+  INCOME
+  EXPENSE
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+  TRANSFER
+}
+
+enum BudgetPeriod {
+  MONTHLY
+  WEEKLY
+  CUSTOM
+}
+
+

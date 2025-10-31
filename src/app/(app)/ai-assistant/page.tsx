@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AiChat } from "@/components/ai/chat";
 
 export default function AiAssistantPage() {
   return (
@@ -7,7 +8,7 @@ export default function AiAssistantPage() {
         <CardTitle>AI Financial Assistant</CardTitle>
       </CardHeader>
       <CardContent>
-        <p>AI chat interface will be implemented here.</p>
+        <AiChat />
       </CardContent>
     </Card>
   );
