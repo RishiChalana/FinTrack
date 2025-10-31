@@ -81,6 +81,9 @@ export function AddTransactionForm({ setOpen }: { setOpen: (open: boolean) => vo
   }
 
   const transactionCategories = Array.from(new Set(transactions.map(t => t.category)));
+  if (!transactionCategories.includes('Other')) {
+    transactionCategories.push('Other');
+  }
 
 
   return (
@@ -197,7 +200,6 @@ export function AddTransactionForm({ setOpen }: { setOpen: (open: boolean) => vo
                 </FormControl>
                 <SelectContent>
                   {transactionCategories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
-                  <SelectItem value="Other">Other</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />
