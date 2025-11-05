@@ -42,7 +42,7 @@ export function SidebarNav() {
       <SidebarHeader>
         <Link href="/dashboard" className="flex items-center gap-2 font-bold text-lg text-primary">
           <PiggyBank className="h-6 w-6" />
-          <span>FinTrack AI</span>
+          <span>FinTrack</span>
         </Link>
       </SidebarHeader>
       <SidebarContent className="p-2">
