@@ -6,7 +6,7 @@ import { LanguageSelector } from '@/components/language-selector';
 import { CookieBanner } from '@/components/cookie-banner';
 
 export const metadata: Metadata = {
-  title: 'FinTrack AI',
+  title: 'FinTrack',
   description: 'Smart Finance Tracker',
 };
 
@@ -32,7 +32,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <div className="p-2 flex justify-end"><LanguageSelector /></div>
+          
           {children}
           <CookieBanner />
           <Toaster />

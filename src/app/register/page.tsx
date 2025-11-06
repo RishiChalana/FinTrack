@@ -32,22 +32,46 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="max-w-sm mx-auto p-6">
-      <h1 className="text-xl font-semibold mb-4">Register</h1>
-      <form onSubmit={onSubmit} className="space-y-3">
-        <input className="w-full border rounded px-3 py-2" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
-        <input className="w-full border rounded px-3 py-2" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
-        <input type="password" className="w-full border rounded px-3 py-2" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
-        <button disabled={loading} className="w-full bg-black text-white rounded px-3 py-2">{loading ? '...' : 'Create account'}</button>
-      </form>
-      <div className="mt-2 text-sm">
-        Have an account? <a className="underline" href="/login">Sign in</a>
-      </div>
-      <div className="mt-2 text-xs text-muted-foreground space-x-2">
-        <a className="underline" href="/terms">Terms of Service</a>
-        <a className="underline" href="/privacy">Privacy Policy</a>
-      </div>
+    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-[#1a1a1a] via-[#2c2c2c] to-black">
+  <div className="max-w-md w-full bg-white/10 backdrop-blur-xl border border-white/20 p-8 rounded-2xl shadow-2xl">
+    <h1 className="text-2xl font-semibold mb-6 text-center text-white">Register</h1>
+    <form onSubmit={onSubmit} className="space-y-4">
+      <input
+        className="w-full bg-transparent border border-white/30 text-white placeholder-gray-400 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-gray-400"
+        placeholder="Name"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+      />
+      <input
+        className="w-full bg-transparent border border-white/30 text-white placeholder-gray-400 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-gray-400"
+        placeholder="Email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+      />
+      <input
+        type="password"
+        className="w-full bg-transparent border border-white/30 text-white placeholder-gray-400 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-gray-400"
+        placeholder="Password"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+      />
+      <button
+        disabled={loading}
+        className="w-full bg-white text-black rounded-lg px-4 py-3 hover:bg-gray-200 transition font-medium"
+      >
+        {loading ? '...' : 'Create account'}
+      </button>
+    </form>
+    <div className="mt-3 text-sm text-gray-300 text-center">
+      Have an account? <a className="underline" href="/login">Sign in</a>
     </div>
+    <div className="mt-3 text-xs text-gray-400 flex justify-center space-x-3">
+      <a className="underline" href="/terms">Terms of Service</a>
+      <a className="underline" href="/privacy">Privacy Policy</a>
+    </div>
+  </div>
+</div>
+
   );
 }
 
