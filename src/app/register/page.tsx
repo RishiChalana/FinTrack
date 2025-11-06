@@ -23,6 +23,9 @@ export default function RegisterPage() {
       const data = await res.json();
       localStorage.setItem("accessToken", data.accessToken);
       localStorage.setItem("refreshToken", data.refreshToken);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('data-updated'));
+      }
       router.push("/dashboard");
     } catch (e) {
       alert("Register failed");

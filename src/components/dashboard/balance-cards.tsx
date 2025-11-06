@@ -9,10 +9,17 @@ export function BalanceCards() {
   const [transactions, setTransactions] = useState<any[]>([]);
   useEffect(() => {
     let mounted = true;
-    apiGet<{ transactions: any[] }>("/api/transactions")
-      .then((d) => { if (mounted) setTransactions(d.transactions ?? []); })
-      .catch(() => setTransactions([]));
-    return () => { mounted = false; };
+    const load = () => {
+      apiGet<{ transactions: any[] }>("/api/transactions")
+        .then((d) => { if (mounted) setTransactions(d.transactions ?? []); })
+        .catch(() => setTransactions([]));
+    };
+    load();
+    const onUpdated = () => load();
+    if (typeof window !== 'undefined') {
+      window.addEventListener('data-updated', onUpdated);
+    }
+    return () => { mounted = false; if (typeof window !== 'undefined') window.removeEventListener('data-updated', onUpdated); };
   }, []);
 
   const totalIncome = useMemo(() =>

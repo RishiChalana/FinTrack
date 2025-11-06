@@ -13,20 +13,49 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { apiGet } from "@/lib/api-client";
 
 export function UserNav() {
     const userAvatar = PlaceHolderImages.find(p => p.id === 'user-avatar');
     const [user, setUser] = useState<{ name: string | null; email: string } | null>(null);
 
     useEffect(() => {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-      if (!token) return;
-      fetch('/api/me', { headers: { Authorization: `Bearer ${token}` } })
-        .then(r => r.ok ? r.json() : Promise.reject())
-        .then(d => setUser(d.user))
-        .catch(() => setUser(null));
+      let mounted = true;
+      const load = () => {
+        apiGet<{ user: { name: string | null; email: string } }>("/api/me")
+          .then((d) => { if (mounted) setUser(d.user); })
+          .catch(() => { if (mounted) setUser(null); });
+      };
+      load();
+      const onUpdated = () => load();
+      const onStorage = (e: StorageEvent) => {
+        if (e.key === 'accessToken' || e.key === 'refreshToken') load();
+      };
+      const onFocus = () => load();
+      if (typeof window !== 'undefined') {
+        window.addEventListener('data-updated', onUpdated);
+        window.addEventListener('storage', onStorage);
+        window.addEventListener('focus', onFocus);
+      }
+      return () => {
+        mounted = false;
+        if (typeof window !== 'undefined') {
+          window.removeEventListener('data-updated', onUpdated);
+          window.removeEventListener('storage', onStorage);
+          window.removeEventListener('focus', onFocus);
+        }
+      };
     }, []);
+
+    const initials = useMemo(() => {
+      const name = (user?.name || '').trim();
+      if (name) return name.charAt(0).toUpperCase();
+      const email = (user?.email || '').trim();
+      if (email) return email.charAt(0).toUpperCase();
+      return 'U';
+    }, [user]);
 
     function logout() {
       localStorage.removeItem('accessToken');
@@ -44,7 +73,7 @@ export function UserNav() {
                 alt="User avatar" 
                 data-ai-hint={userAvatar?.imageHint}
             />
-            <AvatarFallback>U</AvatarFallback>
+            <AvatarFallback>{initials}</AvatarFallback>
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
@@ -57,9 +86,11 @@ export function UserNav() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <DropdownMenuItem>
-            Profile
-            <DropdownMenuShortcut>⇧⌘P</DropdownMenuShortcut>
+          <DropdownMenuItem asChild>
+            <Link href="/profile"> 
+              Profile
+              <DropdownMenuShortcut>⇧⌘P</DropdownMenuShortcut>
+            </Link>
           </DropdownMenuItem>
           <DropdownMenuItem>
             Billing

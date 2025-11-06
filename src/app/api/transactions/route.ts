@@ -14,7 +14,11 @@ export async function GET(req: NextRequest) {
     if (start || end) where.date = { gte: start ? new Date(start) : undefined, lte: end ? new Date(end) : undefined };
     if (categoryId) where.categoryId = categoryId;
     if (accountId) where.accountId = accountId;
-    const transactions = await prisma.transaction.findMany({ where, orderBy: { date: "desc" } });
+    const transactions = await prisma.transaction.findMany({
+      where,
+      orderBy: { date: "desc" },
+      include: { category: true },
+    });
     return NextResponse.json({ transactions });
   } catch {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

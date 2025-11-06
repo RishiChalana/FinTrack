@@ -17,26 +17,34 @@ export function BudgetStatus() {
 
   useEffect(() => {
     let mounted = true;
-    Promise.all([
-      apiGet<{ budgets: any[] }>("/api/budgets").catch(() => ({ budgets: [] })),
-      apiGet<{ transactions: any[] }>("/api/transactions").catch(() => ({ transactions: [] })),
-    ]).then(([b, t]) => {
-      if (!mounted) return;
-      setBudgets(b.budgets ?? []);
-      setTransactions(t.transactions ?? []);
-    });
+    const load = () => {
+      Promise.all([
+        apiGet<{ budgets: any[] }>("/api/budgets").catch(() => ({ budgets: [] })),
+        apiGet<{ transactions: any[] }>("/api/transactions").catch(() => ({ transactions: [] })),
+      ]).then(([b, t]) => {
+        if (!mounted) return;
+        setBudgets(b.budgets ?? []);
+        setTransactions(t.transactions ?? []);
+      });
+    };
+    load();
+    const onUpdated = () => load();
+    if (typeof window !== 'undefined') {
+      window.addEventListener('data-updated', onUpdated);
+    }
     return () => { mounted = false; };
   }, []);
 
   const spentByBudgetId = useMemo(() => {
     const map: Record<string, number> = {};
     for (const b of budgets) {
+      // Sum expenses where the merchant (stored in notes) matches the budget name
       const budgetName = (b.name || '').toString().trim().toLowerCase();
       const spent = transactions
         .filter((tx) => tx.type === 'EXPENSE')
         .filter((tx) => {
-          const note = (tx.notes || '').toString().trim().toLowerCase();
-          return budgetName.length > 0 && note === budgetName;
+          const merchant = (tx.notes || '').toString().trim().toLowerCase();
+          return budgetName.length > 0 && merchant === budgetName;
         })
         .reduce((sum, tx) => sum + Math.abs(Number(tx.amount)), 0);
       map[b.id] = spent;

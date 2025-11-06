@@ -4,6 +4,8 @@ import { requireAuth } from "@/lib/api-auth";
 import { Parser as Json2CsvParser } from "json2csv";
 import jsPDF from "jspdf";
 
+export const runtime = 'nodejs';
+
 export async function GET(req: NextRequest) {
   try {
     const { userId } = requireAuth(req);
@@ -14,11 +16,27 @@ export async function GET(req: NextRequest) {
     const where: any = { userId };
     if (start || end) where.date = { gte: start ? new Date(start) : undefined, lte: end ? new Date(end) : undefined };
 
-    const txns = await prisma.transaction.findMany({ where, orderBy: { date: "desc" } });
+    const txns = await prisma.transaction.findMany({
+      where,
+      orderBy: { date: "desc" },
+      include: { category: true, account: true },
+    });
+
+    const flat = txns.map((t) => ({
+      id: t.id,
+      date: t.date.toISOString().slice(0, 10),
+      type: t.type,
+      amount: t.amount.toString(),
+      currency: t.currency,
+      account: t.account?.name || t.accountId,
+      category: t.category?.name || '',
+      merchant: t.notes || '',
+      method: t.method || '',
+    }));
 
     if (type === "csv") {
-      const parser = new Json2CsvParser({ fields: ["id", "type", "amount", "currency", "accountId", "categoryId", "date", "notes"] });
-      const csv = parser.parse(txns);
+      const parser = new Json2CsvParser({ fields: ["id", "date", "type", "amount", "currency", "account", "category", "merchant", "method"] });
+      const csv = "\uFEFF" + parser.parse(flat);
       return new NextResponse(csv, {
         headers: {
           "Content-Type": "text/csv",
@@ -28,13 +46,16 @@ export async function GET(req: NextRequest) {
     }
 
     if (type === "pdf") {
-      const doc = new jsPDF();
-      doc.text("Financial Report", 10, 10);
-      let y = 20;
-      txns.slice(0, 40).forEach(t => {
-        const line = `${t.date.toISOString().slice(0,10)}  ${t.type}  ${t.amount} ${t.currency}`;
-        doc.text(line, 10, y);
-        y += 8;
+      const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+      doc.setFontSize(16);
+      doc.text("Financial Report", 40, 40);
+      doc.setFontSize(10);
+      let y = 70;
+      flat.slice(0, 60).forEach(t => {
+        const line = `${t.date}   ${t.type.padEnd(7)}   ${t.amount} ${t.currency}   ${t.category || '—'}   ${t.merchant || ''}`;
+        doc.text(line, 40, y);
+        y += 14;
+        if (y > 780) { doc.addPage(); y = 40; }
       });
       const pdf = doc.output("arraybuffer");
       return new NextResponse(Buffer.from(pdf), {
