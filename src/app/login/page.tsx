@@ -1,13 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const googleButtonRef = useRef<HTMLDivElement | null>(null);
   const router = useRouter();
+
+  function storeTokens(data: { accessToken: string; refreshToken: string }) {
+    localStorage.setItem("accessToken", data.accessToken);
+    localStorage.setItem("refreshToken", data.refreshToken);
+    window.dispatchEvent(new Event("data-updated"));
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -20,16 +28,71 @@ export default function LoginPage() {
       });
       if (!res.ok) throw new Error("login failed");
       const data = await res.json();
-      localStorage.setItem("accessToken", data.accessToken);
-      localStorage.setItem("refreshToken", data.refreshToken);
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new Event('data-updated'));
-      }
+      storeTokens(data);
       router.push("/dashboard");
     } catch (e) {
       alert("Login failed");
     } finally {
       setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID) return;
+    const handleOnLoad = () => {
+      if (!(window as any).google || !googleButtonRef.current) return;
+      (window as any).google.accounts.id.initialize({
+        client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
+        callback: handleGoogleCredential,
+      });
+      (window as any).google.accounts.id.renderButton(googleButtonRef.current, {
+        theme: "outline",
+        size: "large",
+        width: "100%",
+      });
+    };
+
+    const existing = document.getElementById("google-identity-services");
+    if (existing) {
+      if ((window as any).google) {
+        handleOnLoad();
+      } else {
+        existing.addEventListener("load", handleOnLoad);
+      }
+      return () => {
+        existing.removeEventListener?.("load", handleOnLoad);
+      };
+    }
+
+    const script = document.createElement("script");
+    script.src = "https://accounts.google.com/gsi/client";
+    script.async = true;
+    script.defer = true;
+    script.id = "google-identity-services";
+    script.onload = handleOnLoad;
+    document.body.appendChild(script);
+    return () => {
+      script.removeEventListener?.("load", handleOnLoad);
+    };
+  }, []);
+
+  async function handleGoogleCredential(response: any) {
+    if (!response?.credential) return;
+    setGoogleLoading(true);
+    try {
+      const res = await fetch("/api/auth/google", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ credential: response.credential }),
+      });
+      if (!res.ok) throw new Error("Google sign-in failed");
+      const data = await res.json();
+      storeTokens(data);
+      router.push("/dashboard");
+    } catch (err) {
+      alert("Google sign-in failed. Please try again.");
+    } finally {
+      setGoogleLoading(false);
     }
   }
 
@@ -58,6 +121,23 @@ export default function LoginPage() {
         {loading ? '...' : 'Login'}
       </button>
     </form>
+    {process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ? (
+      <div className="mt-6 space-y-2">
+        <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-gray-400">
+          <span className="flex-1 border-t border-white/20" />
+          <span>Or continue with</span>
+          <span className="flex-1 border-t border-white/20" />
+        </div>
+        <div ref={googleButtonRef} className="flex justify-center" />
+        {googleLoading && (
+          <p className="text-center text-xs text-gray-400">Authorizing…</p>
+        )}
+      </div>
+    ) : (
+      <p className="mt-6 text-center text-xs text-yellow-200">
+        Set NEXT_PUBLIC_GOOGLE_CLIENT_ID to enable Google sign-in.
+      </p>
+    )}
     <div className="mt-3 text-sm flex justify-between text-gray-300">
       <a className="underline" href="/register">Registration</a>
       <a className="underline" href="/forgot-password">Forgot password</a>

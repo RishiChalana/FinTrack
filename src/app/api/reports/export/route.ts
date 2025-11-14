@@ -14,7 +14,36 @@ export async function GET(req: NextRequest) {
     const start = searchParams.get("start");
     const end = searchParams.get("end");
     const where: any = { userId };
-    if (start || end) where.date = { gte: start ? new Date(start) : undefined, lte: end ? new Date(end) : undefined };
+    
+    // Parse dates correctly for MySQL DATETIME comparison
+    // MySQL DATETIME stores dates without timezone, so we need precise date boundaries
+    if (start || end) {
+      const dateFilter: any = {};
+      if (start) {
+        // Validate and parse YYYY-MM-DD format
+        if (start.match(/^\d{4}-\d{2}-\d{2}$/)) {
+          // Create date at start of day (00:00:00.000) in server timezone
+          // Using ISO string format that Prisma/MySQL understands
+          const [year, month, day] = start.split('-').map(Number);
+          const startDate = new Date(year, month - 1, day, 0, 0, 0, 0);
+          dateFilter.gte = startDate;
+        } else {
+          return NextResponse.json({ error: "Invalid start date format. Use YYYY-MM-DD" }, { status: 400 });
+        }
+      }
+      if (end) {
+        // Validate and parse YYYY-MM-DD format
+        if (end.match(/^\d{4}-\d{2}-\d{2}$/)) {
+          // Create date at end of day (23:59:59.999) in server timezone
+          const [year, month, day] = end.split('-').map(Number);
+          const endDate = new Date(year, month - 1, day, 23, 59, 59, 999);
+          dateFilter.lte = endDate;
+        } else {
+          return NextResponse.json({ error: "Invalid end date format. Use YYYY-MM-DD" }, { status: 400 });
+        }
+      }
+      where.date = dateFilter;
+    }
 
     const txns = await prisma.transaction.findMany({
       where,
@@ -49,9 +78,13 @@ export async function GET(req: NextRequest) {
       const doc = new jsPDF({ unit: 'pt', format: 'a4' });
       doc.setFontSize(16);
       doc.text("Financial Report", 40, 40);
+      if (start || end) {
+        doc.setFontSize(10);
+        doc.text(`Date Range: ${start || 'Start'} to ${end || 'End'}`, 40, 60);
+      }
       doc.setFontSize(10);
-      let y = 70;
-      flat.slice(0, 60).forEach(t => {
+      let y = start || end ? 80 : 70;
+      flat.forEach(t => {
         const line = `${t.date}   ${t.type.padEnd(7)}   ${t.amount} ${t.currency}   ${t.category || '—'}   ${t.merchant || ''}`;
         doc.text(line, 40, y);
         y += 14;
@@ -67,8 +100,12 @@ export async function GET(req: NextRequest) {
     }
 
     return NextResponse.json({ error: "Unsupported type" }, { status: 400 });
-  } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  } catch (e: any) {
+    console.error("Report export error:", e);
+    if (e.message?.includes("Unauthorized") || e.message?.includes("requireAuth")) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    return NextResponse.json({ error: "Failed to generate report", details: e.message }, { status: 500 });
   }
 }
 

@@ -9,8 +9,12 @@ export default function ReportsPage() {
 
   function download(type: 'csv' | 'pdf') {
     const params = new URLSearchParams();
-    if (start) params.set('start', new Date(start).toISOString());
-    if (end) params.set('end', new Date(end).toISOString());
+    if (start) {
+      params.set('start', start);
+    }
+    if (end) {
+      params.set('end', end);
+    }
     params.set('type', type);
     const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
     const url = `/api/reports/export?${params.toString()}`;
@@ -32,8 +36,8 @@ export default function ReportsPage() {
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-          <input type="datetime-local" className="border rounded px-2 py-1" value={start} onChange={(e) => setStart(e.target.value)} />
-          <input type="datetime-local" className="border rounded px-2 py-1" value={end} onChange={(e) => setEnd(e.target.value)} />
+          <input type="date" className="border rounded px-2 py-1" placeholder="Start date" value={start} onChange={(e) => setStart(e.target.value)} />
+          <input type="date" className="border rounded px-2 py-1" placeholder="End date" value={end} onChange={(e) => setEnd(e.target.value)} />
           <div className="flex gap-2">
             <button onClick={() => download('csv')} className="bg-black text-white rounded px-3 py-1">Export CSV</button>
             <button onClick={() => download('pdf')} className="bg-black text-white rounded px-3 py-1">Export PDF</button>
