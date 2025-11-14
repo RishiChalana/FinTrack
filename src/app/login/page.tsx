@@ -85,12 +85,17 @@ export default function LoginPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ credential: response.credential }),
       });
-      if (!res.ok) throw new Error("Google sign-in failed");
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        console.error("Google auth error:", errorData);
+        throw new Error(errorData.error || "Google sign-in failed");
+      }
       const data = await res.json();
       storeTokens(data);
       router.push("/dashboard");
-    } catch (err) {
-      alert("Google sign-in failed. Please try again.");
+    } catch (err: any) {
+      console.error("Google sign-in error:", err);
+      alert(err.message || "Google sign-in failed. Please try again.");
     } finally {
       setGoogleLoading(false);
     }

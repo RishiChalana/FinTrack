@@ -3,26 +3,72 @@ import { OAuth2Client } from "google-auth-library";
 import { prisma } from "@/lib/prisma";
 import { hashPassword, signAccessToken, signRefreshToken } from "@/lib/auth";
 
-const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+function getOAuthClient() {
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  if (!clientId) {
+    throw new Error("GOOGLE_CLIENT_ID is not configured");
+  }
+  return new OAuth2Client(clientId);
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    },
+  });
+}
 
 export async function POST(req: NextRequest) {
   try {
     const { credential } = await req.json();
     if (!credential) {
-      return NextResponse.json({ error: "Missing credential" }, { status: 400 });
-    }
-    if (!process.env.GOOGLE_CLIENT_ID) {
-      return NextResponse.json({ error: "Google auth is not configured" }, { status: 500 });
+      return NextResponse.json({ error: "Missing credential" }, { 
+        status: 400,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type',
+        },
+      });
     }
 
+    let client;
+    try {
+      client = getOAuthClient();
+    } catch (err: any) {
+      console.error("OAuth client initialization failed:", err);
+      return NextResponse.json({ error: "Google auth is not configured" }, { 
+        status: 500,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type',
+        },
+      });
+    }
     let ticket;
     try {
       ticket = await client.verifyIdToken({
         idToken: credential,
         audience: process.env.GOOGLE_CLIENT_ID,
       });
-    } catch {
-      return NextResponse.json({ error: "Invalid Google token" }, { status: 400 });
+    } catch (err: any) {
+      console.error("Google token verification failed:", err?.message || err);
+      return NextResponse.json({ 
+        error: "Invalid Google token", 
+        details: process.env.NODE_ENV === 'development' ? err?.message : undefined 
+      }, { 
+        status: 400,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type',
+        },
+      });
     }
 
     const payload = ticket.getPayload();
@@ -52,10 +98,26 @@ export async function POST(req: NextRequest) {
       user: { id: user.id, email: user.email, name: user.name, role: user.role },
       accessToken,
       refreshToken,
+    }, {
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+      },
     });
-  } catch (e) {
+  } catch (e: any) {
     console.error("Google auth error", e);
-    return NextResponse.json({ error: "Failed to authenticate with Google" }, { status: 500 });
+    return NextResponse.json({ 
+      error: "Failed to authenticate with Google",
+      details: process.env.NODE_ENV === 'development' ? e?.message : undefined
+    }, { 
+      status: 500,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+      },
+    });
   }
 }
 
